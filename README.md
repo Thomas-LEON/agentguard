@@ -2,7 +2,7 @@
 
 > **A security middleware for LangChain agents** — intercept, validate and safely execute LLM-generated code.
 
-[![CI](https://github.com/thomasleon/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/thomasleon/agentguard/actions)
+[![CI](https://github.com/Thomas-LEON/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-LEON/agentguard/actions)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-red.svg)](https://github.com/astral-sh/ruff)
@@ -30,20 +30,24 @@ There is no native guardrail in LangChain to prevent this.
 
 ## ✅ The Solution
 
-AgentGuard wraps your agent's code execution tool in a **3-layer security pipeline**. Before any LLM-generated code runs, it must pass through:
+AgentGuard wraps your agent's code execution tool in a **3-layer security pipeline**. Before any LLM-generated code runs, it must pass through all three layers:
 
-```
-LLM Agent
-    │
-    ▼
-┌─────────────────────────────────────┐
-│  Layer 1 │ AST Static Validator     │  Blocks forbidden imports & syscalls
-│  Layer 2 │ Network Filter           │  Blocks calls to non-whitelisted domains
-│  Layer 3 │ Gemini Semantic Judge    │  Detects subtle malicious intent via LLM
-└─────────────────────────────────────┘
-    │
-    ▼
- Safe exec()  →  Result back to Agent
+```mermaid
+flowchart TD
+    A["🤖 LLM Agent generates code"] --> B{"🔍 Layer 1: AST Validator"}
+    B -->|"✅ Pass"| C{"🌐 Layer 2: Network Filter"}
+    B -->|"❌ Blocked"| E["🛡️ SecurityBlockedError\n→ Agent self-corrects"]
+    C -->|"✅ Pass"| D{"🧠 Layer 3: Semantic Judge"}
+    C -->|"❌ Blocked"| E
+    D -->|"✅ SAFE"| F["⚡ Sandboxed exec()\n→ Result back to Agent"]
+    D -->|"❌ UNSAFE"| E
+
+    style A fill:#4a9eff,color:#fff
+    style B fill:#ff9f43,color:#fff
+    style C fill:#ff9f43,color:#fff
+    style D fill:#ff9f43,color:#fff
+    style E fill:#ee5a24,color:#fff
+    style F fill:#2ed573,color:#fff
 ```
 
 If any layer blocks the code, the agent receives a **descriptive error** and **self-corrects** — no crash, no data loss.
@@ -94,19 +98,97 @@ safe_repl = SafePythonREPLTool(policy=policy, judge_llm=judge_llm)
 ## 🔒 Security Layers in Detail
 
 ### Layer 1 — AST Static Validator
-Uses Python's native `ast` module to parse the code **without executing it**. Blocks any import not on the whitelist and dangerous built-ins (`exec`, `eval`, `open`, `__import__`).
+
+Uses Python's native `ast` module to parse the code **without executing it**.
+
+**Blocks:**
+- Any `import` not explicitly whitelisted in `allowed_modules`
+- `from X import Y` style imports of non-whitelisted modules
+- Dangerous built-in calls: `exec`, `eval`, `compile`, `open`, `__import__`
+- Sandbox escape vectors: `getattr`, `setattr`, `delattr`, `globals`, `locals`
+
+**Speed:** ~0.1ms — no I/O, no network, pure AST traversal.
 
 ### Layer 2 — Network Filter
-Uses regex to detect outbound HTTP calls (`requests.get`, `requests.post`, etc.) and validates the target domain against the whitelist. An empty whitelist blocks **all** network access.
+
+Uses regex patterns to detect outbound network calls and validates target domains against the whitelist.
+
+**Detects:**
+- `requests.get/post/put/delete/patch/head`
+- `httpx` and `aiohttp` calls
+- `urllib.request.urlopen` and `urlretrieve`
+- Raw `socket.connect()` calls
+- Bare URL literals (`https://...`)
+
+An empty `allowed_domains` list blocks **all** network access.
 
 ### Layer 3 — Semantic Judge (Gemini)
-For subtle attacks that evade static analysis (e.g. a loop that deletes files one-by-one), the code is sent to `gemini-1.5-flash` with a strict binary prompt. Only code classified as `SAFE` is allowed through.
+
+For subtle attacks that evade static analysis (e.g. a loop that deletes files one-by-one), the code is sent to `gemini-1.5-flash` with a strict binary prompt.
+
+**Verdict:** Only code classified as `SAFE` passes. Anything else (including ambiguous responses) is blocked — **fail-closed by design**.
+
+**Catches:** Data exfiltration, privilege escalation, destructive file operations, obfuscated malicious intent.
+
+### Sandboxed Execution
+
+Code that passes all 3 layers runs in a restricted environment:
+- **Safe builtins only** — `print`, `len`, `range`, etc. (no `exec`, `eval`, `open`)
+- **stdout capture** — `print()` output is returned to the agent
+- **Timeout enforcement** — configurable via `execution_timeout`
+- **Thread isolation** — execution runs in a daemon thread
+
+---
+
+## 📁 Project Structure
+
+```
+agentguard/
+├── agentguard/
+│   ├── __init__.py              # Public API exports
+│   ├── policy.py                # SecurityPolicy (Pydantic model)
+│   ├── exceptions.py            # SecurityBlockedError
+│   ├── validators/
+│   │   ├── ast_validator.py     # Layer 1: Static AST analysis
+│   │   └── network_filter.py    # Layer 2: Network domain filter
+│   ├── judges/
+│   │   └── gemini_judge.py      # Layer 3: Gemini semantic judge
+│   └── tools/
+│       └── langchain_tool.py    # SafePythonREPLTool (LangChain BaseTool)
+├── tests/                       # Pytest suite (mocked LLM for Layer 3)
+├── examples/
+│   ├── basic_agent.py           # Simple agent + AgentGuard demo
+│   └── threat_intel_demo.py     # Threat analysis agent demo
+├── pyproject.toml               # Poetry config + metadata
+├── .github/workflows/ci.yml     # GitHub Actions CI
+└── README.md
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] 3-layer security pipeline (AST + Network + Semantic Judge)
+- [x] LangChain `BaseTool` integration
+- [x] Sandboxed execution with safe builtins
+- [x] Timeout enforcement
+- [x] GitHub Actions CI
+- [ ] **Logging & Audit Trail** — structured logs of every blocked/allowed execution
+- [ ] **Dashboard UI** — web dashboard to visualize security events in real-time
+- [ ] **Rate Limiting** — limit the number of code executions per minute
+- [ ] **Plugin System** — custom validator layers via a simple interface
+- [ ] **PyPI Publication** — `pip install agentguard` from the public index
+- [ ] **LangSmith Integration** — trace security events in LangSmith
 
 ---
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+## 🔐 Security
+
+Found a vulnerability? Please read [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
 
 ## 📄 License
 

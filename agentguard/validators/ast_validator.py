@@ -12,11 +12,20 @@ from agentguard.policy import SecurityPolicy
 
 # Calls that are unconditionally forbidden, regardless of the policy.
 _FORBIDDEN_CALLS: set[str] = {
+    # Code execution
     "exec",
     "eval",
     "compile",
     "__import__",
+    # File system access
     "open",
+    # Attribute manipulation (evasion vectors)
+    "getattr",
+    "setattr",
+    "delattr",
+    # Runtime introspection (sandbox escape)
+    "globals",
+    "locals",
 }
 
 

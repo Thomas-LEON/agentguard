@@ -3,6 +3,7 @@ Layer 2 — Network Filter.
 
 Uses regex to detect network calls targeting domains
 not explicitly whitelisted in the SecurityPolicy.
+Covers: requests, urllib, httpx, aiohttp, socket.
 """
 
 import re
@@ -10,11 +11,40 @@ import re
 from agentguard.exceptions import SecurityBlockedError
 from agentguard.policy import SecurityPolicy
 
-# Captures URLs/domains in common patterns like requests.get("https://evil.com")
-_URL_PATTERN: re.Pattern[str] = re.compile(
-    r"""(?:https?://|requests\.(get|post|put|delete|patch|head)\s*\()\s*['"]([\w.\-/:?=&%]+)['"]""",
+# Pattern 1: URL strings in common HTTP library calls
+# Matches requests.get("url"), httpx.get("url"), etc.
+_HTTP_CALL_PATTERN: re.Pattern[str] = re.compile(
+    r"""(?:requests|httpx|aiohttp)\.(get|post|put|delete|patch|head|request)\s*\(\s*['"]([^'"]+)['"]""",
     re.IGNORECASE,
 )
+
+# Pattern 2: Bare URL strings (https://... or http://...)
+_URL_LITERAL_PATTERN: re.Pattern[str] = re.compile(
+    r"""['"]https?://([^/'"]+)""",
+    re.IGNORECASE,
+)
+
+# Pattern 3: urllib calls — urlopen("url"), urlretrieve("url"), Request("url")
+_URLLIB_PATTERN: re.Pattern[str] = re.compile(
+    r"""(?:urlopen|urlretrieve|Request)\s*\(\s*['"]https?://([^/'"]+)""",
+    re.IGNORECASE,
+)
+
+# Pattern 4: Low-level socket connections — socket.connect(("host", port))
+_SOCKET_PATTERN: re.Pattern[str] = re.compile(
+    r"""\.connect\s*\(\s*\(\s*['"]([^'"]+)['"]\s*,""",
+    re.IGNORECASE,
+)
+
+# Imports that signal network capability
+_NETWORK_IMPORTS: set[str] = {
+    "requests",
+    "httpx",
+    "aiohttp",
+    "urllib",
+    "socket",
+    "http",
+}
 
 
 class NetworkFilter:
@@ -23,6 +53,7 @@ class NetworkFilter:
 
     This is Layer 2 of the AgentGuard pipeline. It scans source code as
     plain text using regex patterns to detect outbound network calls.
+    Covers: requests, httpx, aiohttp, urllib, and raw socket connections.
 
     Note:
         This layer is heuristic by nature. Sophisticated obfuscation may
@@ -44,8 +75,9 @@ class NetworkFilter:
                 domain, or if any network call is detected when the whitelist
                 is empty (meaning all network access is forbidden).
         """
-        matches = _URL_PATTERN.findall(code)
-        if not matches:
+        domains = self._extract_all_domains(code)
+
+        if not domains:
             return  # No network calls detected — pass
 
         # If the whitelist is empty, ALL network access is forbidden
@@ -56,8 +88,7 @@ class NetworkFilter:
                 code=code,
             )
 
-        for _, url in matches:
-            domain = self._extract_domain(url)
+        for domain in domains:
             if not any(domain.endswith(allowed) for allowed in self._policy.allowed_domains):
                 raise SecurityBlockedError(
                     layer="Network Filter",
@@ -65,8 +96,35 @@ class NetworkFilter:
                     code=code,
                 )
 
+    def _extract_all_domains(self, code: str) -> set[str]:
+        """Extract all unique domains from detected network patterns."""
+        domains: set[str] = set()
+
+        # HTTP library calls: requests.get("https://..."), httpx.post("https://..."), etc.
+        for _, url in _HTTP_CALL_PATTERN.findall(code):
+            domains.add(self._extract_domain(url))
+
+        # Bare URL literals
+        for host in _URL_LITERAL_PATTERN.findall(code):
+            domains.add(self._clean_domain(host))
+
+        # urllib calls
+        for host in _URLLIB_PATTERN.findall(code):
+            domains.add(self._clean_domain(host))
+
+        # Raw socket connections
+        for host in _SOCKET_PATTERN.findall(code):
+            domains.add(self._clean_domain(host))
+
+        return domains
+
     @staticmethod
     def _extract_domain(url: str) -> str:
-        """Extract the base domain from a URL string."""
+        """Extract the base domain from a full URL string."""
         url = url.split("//")[-1]  # strip scheme
-        return url.split("/")[0].split("?")[0]  # strip path & query
+        return url.split("/")[0].split("?")[0].split(":")[0]  # strip path, query & port
+
+    @staticmethod
+    def _clean_domain(host: str) -> str:
+        """Clean up a raw host string."""
+        return host.split("/")[0].split("?")[0].split(":")[0]

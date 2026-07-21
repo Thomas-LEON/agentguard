@@ -2,11 +2,11 @@
 name = "agentguard"
 version = "0.1.0"
 description = "🛡️ A security middleware for LangChain agents — intercept, validate and safely execute LLM-generated code."
-authors = ["Thomas LEON <thomas.leon@protonmail.com>"]
+authors = ["Thomas LEON <Thomas.leon1707@gmail.com>"]
 readme = "README.md"
 license = "MIT"
-homepage = "https://github.com/thomasleon/agentguard"
-repository = "https://github.com/thomasleon/agentguard"
+homepage = "https://github.com/Thomas-LEON/agentguard"
+repository = "https://github.com/Thomas-LEON/agentguard"
 keywords = ["langchain", "llm", "ai-safety", "agentic-ai", "security", "gemini"]
 classifiers = [
     "Development Status :: 3 - Alpha",
