@@ -13,7 +13,7 @@
 
 Modern LangChain agents are powerful because they can **generate and execute Python code** autonomously. But this power is a double-edged sword.
 
-A single malicious prompt — or a hallucination — can lead an agent to generate code like this:
+A single malicious prompt or a hallucination can lead an agent to generate code like this:
 
 ```python
 # An agent asked to "clean up temp files" might generate:
