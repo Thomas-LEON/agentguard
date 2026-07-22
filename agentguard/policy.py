@@ -45,3 +45,33 @@ class SecurityPolicy(BaseModel):
         le=60,
         description="Max seconds for code execution.",
     )
+    memory_limit_mb: int = Field(
+        default=128,
+        ge=32,
+        le=1024,
+        description="Maximum memory available to the external sandbox.",
+    )
+    cpu_limit: float = Field(
+        default=0.5,
+        ge=0.1,
+        le=4.0,
+        description="Maximum CPU cores available to the external sandbox.",
+    )
+    pids_limit: int = Field(
+        default=64,
+        ge=16,
+        le=512,
+        description="Maximum processes and threads available to the sandbox.",
+    )
+    max_code_bytes: int = Field(
+        default=65_536,
+        ge=1_024,
+        le=1_048_576,
+        description="Maximum UTF-8 source size accepted for one execution.",
+    )
+    max_output_bytes: int = Field(
+        default=65_536,
+        ge=1_024,
+        le=1_048_576,
+        description="Maximum stdout and stderr captured from one execution.",
+    )

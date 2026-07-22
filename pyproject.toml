@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "securellm-agentguard"
-version = "0.1.0"
-description = "🛡️ A security middleware for LangChain agents — intercept, validate and safely execute LLM-generated code."
+version = "0.2.0"
+description = "🛡️ Experimental external-sandbox middleware for LangChain code tools."
 authors = ["Thomas LEON <Thomas.leon1707@gmail.com>"]
 readme = "README.md"
 homepage = "https://github.com/Thomas-LEON/agentguard"
@@ -23,6 +23,7 @@ langchain = ">=0.2"
 langchain-core = ">=0.2"
 pydantic = "^2.0"
 python-dotenv = {version = "^1.0", optional = true}
+langchain-google-genai = {version = ">=1.0", optional = true}
 
 [tool.poetry.extras]
 examples = ["python-dotenv", "langchain-google-genai"]
@@ -54,3 +55,6 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=agentguard --cov-report=term-missing"
+markers = [
+    "integration: requires a running Docker daemon",
+]
