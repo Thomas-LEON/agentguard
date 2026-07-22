@@ -30,8 +30,9 @@ If you discover a security vulnerability, please **do NOT** open a public GitHub
 
 ### What Qualifies
 
-- Bypasses of any of the 3 security layers (AST, Network, Semantic)
-- Code that can escape the sandbox (`exec` with restricted builtins)
+- Escapes from the external Docker execution boundary
+- Bypasses of the Docker network, filesystem, privilege or resource controls
+- Bypasses of the AST or network pre-filters that weaken their documented policy
 - Prompt injection attacks against the Semantic Judge
 - Dependency vulnerabilities that affect AgentGuard's security guarantees
 

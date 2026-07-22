@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - Unreleased
+
+### Security
+
+- Replaced in-process Python execution and its non-cancellable daemon thread
+  with a fail-closed external Docker sandbox.
+- Added no-network, read-only filesystem, non-root, capability-drop, PID,
+  CPU, memory and output-size controls to the default executor.
+- Fixed domain allowlist suffix matching so lookalike hosts cannot pass.
+
+### Changed
+
+- Documented AST, regex and LLM checks as pre-filters rather than security
+  boundaries.
+- Declared the optional Gemini integration as a package dependency.
+
 ## [0.1.0] — 2026-07-21
 
 ### Added

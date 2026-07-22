@@ -90,7 +90,8 @@ class NetworkFilter:
 
         for domain in domains:
             is_allowed = any(
-                domain.endswith(allowed) for allowed in self._policy.allowed_domains
+                self._is_allowed_domain(domain, allowed)
+                for allowed in self._policy.allowed_domains
             )
             if not is_allowed:
                 raise SecurityBlockedError(
@@ -132,3 +133,13 @@ class NetworkFilter:
     def _clean_domain(host: str) -> str:
         """Clean up a raw host string."""
         return host.split("/")[0].split("?")[0].split(":")[0]
+
+    @staticmethod
+    def _is_allowed_domain(domain: str, allowed_domain: str) -> bool:
+        """Allow an exact host or a real subdomain, never a suffix lookalike."""
+        normalized_domain = domain.lower().rstrip(".")
+        normalized_allowed = allowed_domain.lower().rstrip(".")
+        return (
+            normalized_domain == normalized_allowed
+            or normalized_domain.endswith(f".{normalized_allowed}")
+        )

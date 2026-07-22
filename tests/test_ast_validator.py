@@ -55,7 +55,7 @@ def test_blocks_from_import(default_policy: SecurityPolicy) -> None:
 
 
 def test_invalid_syntax_raises_security_error(default_policy: SecurityPolicy) -> None:
-    """Invalid Python syntax should raise a SecurityBlockedError (not a raw SyntaxError)."""
+    """Invalid syntax should raise SecurityBlockedError instead of SyntaxError."""
     code = "def broken(: pass"
     with pytest.raises(SecurityBlockedError) as exc_info:
         ASTValidator(default_policy).validate(code)
