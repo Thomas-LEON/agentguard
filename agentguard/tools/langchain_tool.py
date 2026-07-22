@@ -124,7 +124,7 @@ class SafePythonREPLTool(BaseTool):
         ...     allowed_modules=["pandas", "json"],
         ...     use_semantic_judge=True,
         ... )
-        >>> judge_llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+        >>> judge_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
         >>> tool = SafePythonREPLTool(policy=policy, judge_llm=judge_llm)
     """
 
