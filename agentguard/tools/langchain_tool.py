@@ -6,7 +6,7 @@ all code through the AgentGuard 3-layer security pipeline before execution.
 """
 
 import io
-import sys
+import warnings
 import threading
 from contextlib import redirect_stdout
 from typing import Optional, Type
@@ -139,6 +139,17 @@ class SafePythonREPLTool(BaseTool):
     policy: SecurityPolicy = Field(default_factory=SecurityPolicy)
     judge_llm: Optional[BaseChatModel] = None
 
+    def model_post_init(self, __context: object) -> None:
+        """Warn if semantic judge is enabled but no LLM is provided."""
+        if self.policy.use_semantic_judge and self.judge_llm is None:
+            warnings.warn(
+                "[AgentGuard] use_semantic_judge=True but no judge_llm was provided. "
+                "Layer 3 (Semantic Judge) will be SKIPPED. Pass a judge_llm to enable it, "
+                "or set use_semantic_judge=False to suppress this warning.",
+                UserWarning,
+                stacklevel=2,
+            )
+
     def _run(
         self,
         code: str,
@@ -247,7 +258,9 @@ class SafePythonREPLTool(BaseTool):
                 raise ImportError(
                     f"Import of '{root_module}' is not allowed by the security policy."
                 )
-            return __builtins__["__import__"](name, globals, locals, fromlist, level)
+            # Use the built-in __import__ directly — avoids the __builtins__
+            # dict vs. module ambiguity that varies across Python implementations.
+            return __import__(name, globals or {}, locals or {}, fromlist, level)
 
         return _restricted_import
 

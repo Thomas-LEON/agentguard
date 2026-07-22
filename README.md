@@ -96,8 +96,8 @@ policy = SecurityPolicy(
     use_semantic_judge=True,
 )
 
-# Create the secure tool
-judge_llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash")
+# Layer 3 requires a Gemini LLM (optional — Layers 1 & 2 work without it)
+judge_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 safe_repl = SafePythonREPLTool(policy=policy, judge_llm=judge_llm)
 
 # Use it in your LangChain agent instead of PythonREPLTool
