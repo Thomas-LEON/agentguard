@@ -34,7 +34,7 @@ class SemanticJudge:
     catching sophisticated attacks that evaded static analysis.
 
     The judge uses a strict binary prompt (SAFE/UNSAFE) on a fast,
-    cheap model (gemini-1.5-flash recommended) to minimise latency.
+    cheap model (gemini-2.0-flash recommended) to minimise latency.
     """
 
     def __init__(self, llm: BaseChatModel) -> None:

