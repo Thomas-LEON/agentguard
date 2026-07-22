@@ -219,4 +219,4 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-*Built by [Thomas LEON](https://linkedin.com/in/thomas-leon) · Emerging Technologies & Threat Intelligence*
+*Built by [Thomas LEON](https://www.linkedin.com/in/thomas-leon-893316262/) · Emerging Technologies & Threat Intelligence*
