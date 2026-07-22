@@ -3,6 +3,7 @@
 > **A security middleware for LangChain agents** — intercept, validate and safely execute LLM-generated code.
 
 [![CI](https://github.com/Thomas-LEON/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-LEON/agentguard/actions)
+[![PyPI](https://img.shields.io/pypi/v/securellm-agentguard.svg)](https://pypi.org/project/securellm-agentguard/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-red.svg)](https://github.com/astral-sh/ruff)
@@ -79,7 +80,7 @@ Final Answer: 🛑 I am sorry, but I am restricted from accessing the local file
 ## 🚀 Quick Start
 
 ```bash
-pip install agentguard
+pip install securellm-agentguard
 ```
 
 ```python
@@ -146,7 +147,7 @@ An empty `allowed_domains` list blocks **all** network access.
 
 ### Layer 3 — Semantic Judge (Gemini)
 
-For subtle attacks that evade static analysis (e.g. a loop that deletes files one-by-one), the code is sent to `gemini-1.5-flash` with a strict binary prompt.
+For subtle attacks that evade static analysis (e.g. a loop that deletes files one-by-one), the code is sent to `gemini-2.0-flash` with a strict binary prompt.
 
 **Verdict:** Only code classified as `SAFE` passes. Anything else (including ambiguous responses) is blocked — **fail-closed by design**.
 
@@ -199,7 +200,7 @@ agentguard/
 - [ ] **Dashboard UI** — web dashboard to visualize security events in real-time
 - [ ] **Rate Limiting** — limit the number of code executions per minute
 - [ ] **Plugin System** — custom validator layers via a simple interface
-- [ ] **PyPI Publication** — `pip install agentguard` from the public index
+- [x] **PyPI Publication** — `pip install securellm-agentguard`
 - [ ] **LangSmith Integration** — trace security events in LangSmith
 
 ---
