@@ -89,7 +89,10 @@ class NetworkFilter:
             )
 
         for domain in domains:
-            if not any(domain.endswith(allowed) for allowed in self._policy.allowed_domains):
+            is_allowed = any(
+                domain.endswith(allowed) for allowed in self._policy.allowed_domains
+            )
+            if not is_allowed:
                 raise SecurityBlockedError(
                     layer="Network Filter",
                     reason=f"Network call to non-whitelisted domain: '{domain}'",
@@ -100,7 +103,8 @@ class NetworkFilter:
         """Extract all unique domains from detected network patterns."""
         domains: set[str] = set()
 
-        # HTTP library calls: requests.get("https://..."), httpx.post("https://..."), etc.
+        # HTTP library calls: requests.get("https://..."),
+        # httpx.post("https://..."), etc.
         for _, url in _HTTP_CALL_PATTERN.findall(code):
             domains.add(self._extract_domain(url))
 

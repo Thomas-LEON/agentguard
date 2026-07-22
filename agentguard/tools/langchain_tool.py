@@ -6,10 +6,9 @@ all code through the AgentGuard 3-layer security pipeline before execution.
 """
 
 import io
-import warnings
 import threading
+import warnings
 from contextlib import redirect_stdout
-from typing import Optional, Type
 
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.language_models import BaseChatModel
@@ -135,16 +134,17 @@ class SafePythonREPLTool(BaseTool):
         "Dangerous operations (system calls, forbidden imports, data exfiltration) "
         "will be blocked and you will be asked to rewrite the code."
     )
-    args_schema: Type[BaseModel] = _CodeInput
+    args_schema: type[BaseModel] = _CodeInput
     policy: SecurityPolicy = Field(default_factory=SecurityPolicy)
-    judge_llm: Optional[BaseChatModel] = None
+    judge_llm: BaseChatModel | None = None
 
     def model_post_init(self, __context: object) -> None:
         """Warn if semantic judge is enabled but no LLM is provided."""
         if self.policy.use_semantic_judge and self.judge_llm is None:
             warnings.warn(
                 "[AgentGuard] use_semantic_judge=True but no judge_llm was provided. "
-                "Layer 3 (Semantic Judge) will be SKIPPED. Pass a judge_llm to enable it, "
+                "Layer 3 (Semantic Judge) will be SKIPPED. "
+                "Pass a judge_llm to enable it, "
                 "or set use_semantic_judge=False to suppress this warning.",
                 UserWarning,
                 stacklevel=2,
@@ -153,7 +153,7 @@ class SafePythonREPLTool(BaseTool):
     def _run(
         self,
         code: str,
-        run_manager: Optional[CallbackManagerForToolRun] = None,
+        run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         """
         Execute the 3-layer pipeline and run the code if all checks pass.
