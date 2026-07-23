@@ -73,7 +73,7 @@ AGENT_PROMPT = PromptTemplate.from_template("""You are a cybersecurity threat an
 You have access to a secure Python interpreter to process security log data.
 You MUST use the provided log data — do NOT attempt to read files or access the network.
 
-Available log data (already loaded as a string variable):
+Available log data (use this raw data directly in your code as a string literal):
 ```
 {logs}
 ```

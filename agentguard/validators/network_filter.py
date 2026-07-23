@@ -90,7 +90,8 @@ class NetworkFilter:
 
         for domain in domains:
             is_allowed = any(
-                domain.endswith(allowed) for allowed in self._policy.allowed_domains
+                domain == allowed or domain.endswith("." + allowed)
+                for allowed in self._policy.allowed_domains
             )
             if not is_allowed:
                 raise SecurityBlockedError(

