@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "securellm-agentguard"
-version = "0.1.0"
+version = "0.1.1"
 description = "🛡️ Experimental security guardrails for LangChain agent code execution (Alpha)."
 authors = ["Thomas LEON <Thomas.leon1707@gmail.com>"]
 readme = "README.md"
