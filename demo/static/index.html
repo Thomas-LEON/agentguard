@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentGuard Live Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>AgentGuard</span>
+                <span class="badge">v0.1.2</span>
+            </div>
+            <div class="header-actions">
+                <button id="run-btn" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+                    Run Code
+                </button>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <!-- Left Panel: Code Editor -->
+            <section class="panel editor-panel">
+                <div class="panel-header">
+                    <h2>AI Agent Output</h2>
+                    <div class="window-controls">
+                        <span class="dot close"></span>
+                        <span class="dot minimize"></span>
+                        <span class="dot maximize"></span>
+                    </div>
+                </div>
+                <div class="editor-container">
+                    <div class="line-numbers" id="line-numbers">1</div>
+                    <textarea id="code-editor" spellcheck="false">import os
+
+# The agent tries to run a system command
+result = os.system("rm -rf /")
+
+print(f"Command executed: {result}")</textarea>
+                </div>
+            </section>
+
+            <!-- Right Panel: AgentGuard Output -->
+            <section class="panel logs-panel">
+                <div class="panel-header">
+                    <h2>Guardrail Dashboard</h2>
+                    <div class="status-indicator" id="overall-status">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Standing by</span>
+                    </div>
+                </div>
+                
+                <div class="logs-container" id="logs-container">
+                    <div class="log-entry system">
+                        <span class="timestamp">[SYSTEM]</span> AgentGuard initialized. Policy loaded.
+                    </div>
+                    <div class="log-entry system">
+                        <span class="timestamp">[POLICY]</span> Allowed modules: os, math, json, sys
+                    </div>
+                    <div class="log-entry system">
+                        <span class="timestamp">[POLICY]</span> Denied attributes: os.system, os.remove, os.rmdir
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>

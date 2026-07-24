@@ -1,0 +1,291 @@
+:root {
+    --bg-dark: #0f172a;
+    --bg-panel: rgba(30, 41, 59, 0.7);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #2563eb;
+    --status-allowed: #10b981;
+    --status-blocked: #ef4444;
+    --status-system: #8b5cf6;
+    
+    --font-ui: 'Inter', sans-serif;
+    --font-code: 'JetBrains Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    height: 100vh;
+    overflow: hidden;
+    background-image: radial-gradient(circle at 50% -20%, #1e293b 0%, var(--bg-dark) 50%);
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 1.5rem;
+    gap: 1.5rem;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+.logo svg {
+    color: var(--status-allowed);
+}
+
+.badge {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--status-allowed);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+}
+
+.btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    font-family: var(--font-ui);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--accent-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-blue-hover);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+/* Workspace Panels */
+.workspace {
+    display: flex;
+    gap: 1.5rem;
+    flex: 1;
+    min-height: 0;
+}
+
+.panel {
+    flex: 1;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(15, 23, 42, 0.4);
+}
+
+.panel-header h2 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Mac-like Window Controls */
+.window-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.dot.close { background-color: #ef4444; }
+.dot.minimize { background-color: #f59e0b; }
+.dot.maximize { background-color: #10b981; }
+
+/* Editor */
+.editor-container {
+    display: flex;
+    flex: 1;
+    background: rgba(15, 23, 42, 0.6);
+    overflow: hidden;
+}
+
+.line-numbers {
+    padding: 1.5rem 1rem;
+    background: rgba(15, 23, 42, 0.8);
+    color: var(--text-secondary);
+    font-family: var(--font-code);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    text-align: right;
+    user-select: none;
+    border-right: 1px solid var(--border-color);
+}
+
+#code-editor {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 1.5rem;
+    color: var(--text-primary);
+    font-family: var(--font-code);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+}
+
+/* Logs Dashboard */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--text-secondary);
+    box-shadow: 0 0 8px currentColor;
+}
+
+.status-indicator.blocked {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--status-blocked);
+}
+.status-indicator.blocked .status-dot { background-color: var(--status-blocked); }
+
+.status-indicator.allowed {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--status-allowed);
+}
+.status-indicator.allowed .status-dot { background-color: var(--status-allowed); }
+
+.logs-container {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    font-family: var(--font-code);
+    font-size: 0.875rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.log-entry {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid transparent;
+    animation: slideIn 0.3s ease forwards;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.log-entry.system {
+    border-left-color: var(--status-system);
+}
+.log-entry.system .timestamp { color: var(--status-system); }
+
+.log-entry.info {
+    border-left-color: var(--accent-blue);
+}
+.log-entry.info .timestamp { color: var(--accent-blue); }
+
+.log-entry.success {
+    border-left-color: var(--status-allowed);
+    background: rgba(16, 185, 129, 0.05);
+}
+.log-entry.success .timestamp { color: var(--status-allowed); }
+
+.log-entry.error {
+    border-left-color: var(--status-blocked);
+    background: rgba(239, 68, 68, 0.05);
+}
+.log-entry.error .timestamp { color: var(--status-blocked); }
+
+.timestamp {
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+    font-weight: 600;
+}
+
+/* Animations */
+@keyframes slideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.flash-red {
+    animation: flashRed 1s ease;
+}
+
+@keyframes flashRed {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    10% { box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.5); border-color: rgba(239, 68, 68, 0.8); }
+    100% { box-shadow: inset 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.flash-green {
+    animation: flashGreen 1s ease;
+}
+
+@keyframes flashGreen {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    10% { box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.5); border-color: rgba(16, 185, 129, 0.8); }
+    100% { box-shadow: inset 0 0 0 rgba(16, 185, 129, 0); }
+}
