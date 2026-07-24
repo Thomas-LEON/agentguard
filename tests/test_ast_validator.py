@@ -106,3 +106,38 @@ def test_blocks_locals_call(default_policy: SecurityPolicy) -> None:
     with pytest.raises(SecurityBlockedError) as exc_info:
         ASTValidator(default_policy).validate(code)
     assert "locals" in str(exc_info.value)
+
+
+def test_allows_permitted_attributes(granular_policy: SecurityPolicy) -> None:
+    """Safe attributes should be allowed."""
+    code = "import os; os.makedirs('test')"
+    ASTValidator(granular_policy).validate(code)  # Should not raise
+    
+    code = "import sys; print(sys.version)"
+    ASTValidator(granular_policy).validate(code)  # Should not raise
+
+
+def test_blocks_denied_attributes(granular_policy: SecurityPolicy) -> None:
+    """Attributes in the denied list should be blocked."""
+    code = "import os; os.system('ls')"
+    with pytest.raises(SecurityBlockedError) as exc_info:
+        ASTValidator(granular_policy).validate(code)
+    assert "os.system" in str(exc_info.value)
+    
+    code = "from os import remove; remove('test')"
+    with pytest.raises(SecurityBlockedError) as exc_info:
+        ASTValidator(granular_policy).validate(code)
+    assert "os.remove" in str(exc_info.value)
+
+
+def test_blocks_non_allowed_attributes(granular_policy: SecurityPolicy) -> None:
+    """Attributes not in the allowed list (when it exists) should be blocked."""
+    code = "import sys; sys.exit(0)"
+    with pytest.raises(SecurityBlockedError) as exc_info:
+        ASTValidator(granular_policy).validate(code)
+    assert "sys.exit" in str(exc_info.value)
+    
+    code = "from sys import exit; exit(0)"
+    with pytest.raises(SecurityBlockedError) as exc_info:
+        ASTValidator(granular_policy).validate(code)
+    assert "sys.exit" in str(exc_info.value)

@@ -64,6 +64,7 @@ class ASTValidator:
         for node in ast.walk(tree):
             self._check_imports(node, code)
             self._check_calls(node, code)
+            self._check_attributes(node, code)
 
     def _check_imports(self, node: ast.AST, code: str) -> None:
         """Block any import not explicitly whitelisted in the policy."""
@@ -84,6 +85,25 @@ class ASTValidator:
                     reason=f"Forbidden import detected: '{module}'",
                     code=code,
                 )
+            
+            for alias in node.names:
+                attr = alias.name
+                
+                if module in self._policy.denied_attributes:
+                    if attr in self._policy.denied_attributes[module]:
+                        raise SecurityBlockedError(
+                            layer="AST Validator",
+                            reason=f"Forbidden attribute import detected: '{module}.{attr}'",
+                            code=code,
+                        )
+                        
+                if module in self._policy.allowed_attributes:
+                    if attr not in self._policy.allowed_attributes[module]:
+                        raise SecurityBlockedError(
+                            layer="AST Validator",
+                            reason=f"Forbidden attribute import detected: '{module}.{attr}'",
+                            code=code,
+                        )
 
     def _check_calls(self, node: ast.AST, code: str) -> None:
         """Block unconditionally dangerous built-in calls."""
@@ -100,3 +120,27 @@ class ASTValidator:
                     reason=f"Forbidden built-in call detected: '{func_name}'",
                     code=code,
                 )
+
+    def _check_attributes(self, node: ast.AST, code: str) -> None:
+        """Block access to forbidden module attributes."""
+        if isinstance(node, ast.Attribute):
+            if isinstance(node.value, ast.Name):
+                module = node.value.id
+                attr = node.attr
+                
+                if module in self._policy.allowed_modules:
+                    if module in self._policy.denied_attributes:
+                        if attr in self._policy.denied_attributes[module]:
+                            raise SecurityBlockedError(
+                                layer="AST Validator",
+                                reason=f"Forbidden attribute access detected: '{module}.{attr}'",
+                                code=code,
+                            )
+                            
+                    if module in self._policy.allowed_attributes:
+                        if attr not in self._policy.allowed_attributes[module]:
+                            raise SecurityBlockedError(
+                                layer="AST Validator",
+                                reason=f"Forbidden attribute access detected: '{module}.{attr}'",
+                                code=code,
+                            )

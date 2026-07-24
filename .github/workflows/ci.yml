@@ -24,13 +24,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install langchain langchain-google-genai pydantic python-dotenv pytest pytest-cov ruff
+          pip install poetry
+          poetry install --sync --with dev --all-extras
 
       - name: Lint with Ruff
-        run: ruff check agentguard/
+        run: poetry run ruff check agentguard/
 
       - name: Run tests
-        run: pytest tests/ --cov=agentguard --cov-report=xml -v
+        run: poetry run pytest tests/ --cov=agentguard --cov-report=xml -v
         env:
           # Tests run with use_semantic_judge=False so no real API key is needed
           GEMINI_API_KEY: "dummy_key_for_ci"

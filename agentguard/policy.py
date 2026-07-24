@@ -31,6 +31,17 @@ class SecurityPolicy(BaseModel):
         default=["math", "json", "re", "datetime", "collections"],
         description="Whitelist of importable Python modules.",
     )
+    allowed_attributes: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Granular whitelist of specific allowed attributes/functions per module. "
+        "If a module is present here, ONLY these attributes are allowed. "
+        "Format: {'module_name': ['attr1', 'attr2']}",
+    )
+    denied_attributes: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Granular blacklist of specific denied attributes/functions per module. "
+        "Format: {'module_name': ['dangerous_attr']}",
+    )
     allowed_domains: list[str] = Field(
         default=[],
         description="Whitelist of allowed network domains. Empty = no network.",

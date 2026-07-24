@@ -218,7 +218,10 @@ agentguard/
 - [x] Timeout enforcement
 - [x] GitHub Actions CI
 - [x] PyPI Publication — `pip install securellm-agentguard`
-- [ ] **Process/Container Isolation** — replace in-process exec with a killable subprocess or ephemeral container
+- [ ] **Live Web App / Dashboard** — a static browser app to visually test AgentGuard policies
+- [ ] **Visual Demo** — add an animated GIF showing AgentGuard blocking and auto-correcting in real-time
+- [ ] **CLI Support** — run AgentGuard locally on Python scripts (e.g., `agentguard check script.py`)
+- [ ] **Process/Container Isolation** — replace in-process exec with a killable subprocess or ephemeral container (v0.2)
 - [ ] **Adversarial Test Suite** — sandbox escape tests, obfuscation tests, resource abuse tests
 - [ ] **Logging & Audit Trail** — structured logs of every blocked/allowed execution
 - [ ] **Plugin System** — custom validator layers via a simple interface

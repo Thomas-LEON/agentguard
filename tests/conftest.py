@@ -25,3 +25,14 @@ def permissive_policy() -> SecurityPolicy:
         allowed_domains=["api.github.com"],
         use_semantic_judge=False,
     )
+
+
+@pytest.fixture
+def granular_policy() -> SecurityPolicy:
+    """A policy that uses allowed_attributes and denied_attributes."""
+    return SecurityPolicy(
+        allowed_modules=["os", "sys"],
+        allowed_attributes={"sys": ["version", "platform"]},
+        denied_attributes={"os": ["system", "remove", "rmdir"]},
+        use_semantic_judge=False,
+    )
